@@ -26,11 +26,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             bc bison build-essential flex gcc-aarch64-linux-gnu git \
-            libelf-dev libssl-dev python3 python3-pip python3-venv rsync
-          python3 -m venv "$RUNNER_TEMP/dtschema"
-          "$RUNNER_TEMP/dtschema/bin/pip" install --upgrade pip
-          "$RUNNER_TEMP/dtschema/bin/pip" install dtschema==2025.12
-          echo "$RUNNER_TEMP/dtschema/bin" >> "$GITHUB_PATH"
+            libelf-dev libssl-dev python3 python3-pip python3-jsonschema \
+            python3-libfdt python3-rfc3987 python3-ruamel.yaml rsync
+          python3 -m pip install --user --break-system-packages --no-deps \
+            dtschema==2025.12
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Clone Spacewar development kernel
         run: |
@@ -67,6 +67,7 @@ jobs:
           ARCH: arm64
           CROSS_COMPILE: aarch64-linux-gnu-
         run: |
+          python3 -c 'import libfdt; print(libfdt.__file__)'
           dt-doc-validate --version
           make CHECK_DTBS=y qcom/sm7325-nothing-spacewar.dtb
 
