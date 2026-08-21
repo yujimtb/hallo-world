@@ -1,0 +1,53 @@
+From fb077a2be6b5eb9a4290cbda0adcb6681c4ba350 Mon Sep 17 00:00:00 2001
+From: yuji mitobe <mitobex7@gmail.com>
+Date: Sat, 22 Aug 2026 03:18:12 +0900
+Subject: [PATCH 1/3] arm64: dts: qcom: sm7325-nothing-spacewar: drop duplicate
+ SoundWire nodes
+
+swr0 and swr1 are each described twice with identical WCD9385 child
+nodes. The duplicate wcd_rx and wcd_tx labels also make the source fail
+to compile with dtc.
+
+Keep a single description of each SoundWire bus.
+
+Signed-off-by: yuji mitobe <mitobex7@gmail.com>
+---
+ .../boot/dts/qcom/sm7325-nothing-spacewar.dts | 22 -------------------
+ 1 file changed, 22 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts b/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts
+index 6cae0cc29c0a..39dd5a52c170 100644
+--- a/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts
++++ b/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts
+@@ -1613,28 +1613,6 @@ wcd_tx: codec@0,3 {
+ 	};
+ };
+ 
+-&swr0 {
+-	status = "okay";
+-
+-	wcd_rx: codec@0,4 {
+-		compatible = "sdw20217010d00";
+-		reg = <0 4>;
+-
+-		qcom,rx-port-mapping = <1 2 3 4 5>;
+-	};
+-};
+-
+-&swr1 {
+-	status = "okay";
+-
+-	wcd_tx: codec@0,3 {
+-		compatible = "sdw20217010d00";
+-		reg = <0 3>;
+-
+-		qcom,tx-port-mapping = <1 2 3 4>;
+-	};
+-};
+-
+ &tlmm {
+ 	/* 56-59: Fingerprint reader (SPI) */
+ 	gpio-reserved-ranges = <56 4>;
+-- 
+2.51.0.windows.2
+
