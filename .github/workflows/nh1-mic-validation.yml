@@ -1,0 +1,95 @@
+name: Validate NH1 microphone patches
+
+on:
+  push:
+    branches:
+      - nh1-mic-ci-20260822
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux DTB and patch checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout validation inputs
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential flex gcc-aarch64-linux-gnu git \
+            libelf-dev libssl-dev python3 python3-pip python3-venv rsync
+          python3 -m venv "$RUNNER_TEMP/dtschema"
+          "$RUNNER_TEMP/dtschema/bin/pip" install --upgrade pip dtschema
+          echo "$RUNNER_TEMP/dtschema/bin" >> "$GITHUB_PATH"
+
+      - name: Clone Spacewar development kernel
+        run: |
+          git clone --depth=1 --branch fekz115/spacewar-6.19 \
+            https://github.com/mainlining/linux.git linux
+
+      - name: Apply Linux patch series
+        run: |
+          git -C linux am "$GITHUB_WORKSPACE"/patches/linux/*.patch
+          git -C linux diff --check origin/fekz115/spacewar-6.19..HEAD
+
+      - name: Run checkpatch
+        working-directory: linux
+        run: |
+          for patch in "$GITHUB_WORKSPACE"/patches/linux/*.patch; do
+            ./scripts/checkpatch.pl --strict "$patch"
+          done
+
+      - name: Build Spacewar DTB
+        working-directory: linux
+        env:
+          ARCH: arm64
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          make defconfig
+          make -j"$(nproc)" qcom/sm7325-nothing-spacewar.dtb
+
+      - name: Validate Spacewar DTB schemas
+        working-directory: linux
+        env:
+          ARCH: arm64
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          make CHECK_DTBS=y qcom/sm7325-nothing-spacewar.dtb
+
+      - name: Upload patched DTB
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm7325-nothing-spacewar-microphone-dtb
+          path: linux/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dtb
+          if-no-files-found: error
+
+  ucm:
+    name: ALSA UCM validator2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: fedora:latest
+    steps:
+      - name: Install validator dependencies
+        run: dnf -y install alsa-lib-devel git make python3
+
+      - name: Checkout validation inputs
+        uses: actions/checkout@v4
+
+      - name: Clone and patch alsa-ucm-conf
+        run: |
+          git clone --depth=1 https://github.com/alsa-project/alsa-ucm-conf.git alsa-ucm-conf
+          git -C alsa-ucm-conf am "$GITHUB_WORKSPACE"/patches/ucm/*.patch
+          git -C alsa-ucm-conf diff --check HEAD^
+
+      - name: Run the upstream UCM validator
+        run: |
+          git clone --depth=1 https://github.com/alsa-project/alsa-tests.git alsa-tests
+          cd alsa-tests/python/ucm-validator2
+          make configs
