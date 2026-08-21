@@ -1,0 +1,156 @@
+From c7e67792293779ba5dc65bf11133d79366b493a2 Mon Sep 17 00:00:00 2001
+From: yuji mitobe <mitobex7@gmail.com>
+Date: Sat, 22 Aug 2026 04:10:57 +0900
+Subject: [PATCH] ucm2: Nothing: spacewar: route built-in digital microphones
+
+Spacewar's built-in microphones are connected to the WCD9385 digital
+microphone inputs over SoundWire, but the current profile enables the
+analog ADC paths.
+
+Route Mic1, Mic4 and Mic5 through TX DEC2 using SWR_MIC8, SWR_MIC10
+and SWR_MIC11, and enable the corresponding WCD9385 DMIC mixer and
+input switches. These are the single-microphone SoundWire paths used
+by the vendor mixer configuration.
+
+Remove the analog CaptureMixerElem entries because these paths no
+longer use the ADC mixer controls.
+
+Signed-off-by: yuji mitobe <mitobex7@gmail.com>
+---
+ ucm2/Nothing/spacewar/HiFi.conf | 80 +++++++++++++--------------------
+ 1 file changed, 30 insertions(+), 50 deletions(-)
+
+diff --git a/ucm2/Nothing/spacewar/HiFi.conf b/ucm2/Nothing/spacewar/HiFi.conf
+index caf0ade..d3f9b02 100644
+--- a/ucm2/Nothing/spacewar/HiFi.conf
++++ b/ucm2/Nothing/spacewar/HiFi.conf
+@@ -51,30 +51,25 @@ SectionDevice."Mic1" {
+ 	Comment "Top Microphone"
+ 
+ 	EnableSequence [
+-		cset "name='TX DEC1 MUX' SWR_MIC"
+-		cset "name='TX SMIC MUX1' SWR_MIC0"
+-		cset "name='TX_AIF1_CAP Mixer DEC1' 1"
+-		cset "name='TX_DEC1 Volume' 84"
+-
+-		cset "name='ADC1_MIXER Switch' 1"
+-		cset "name='ADC1 Switch' 1"
+-		cset "name='TX1 MODE' ADC_LP"
++		cset "name='TX DEC2 MUX' SWR_MIC"
++		cset "name='TX SMIC MUX2' SWR_MIC8"
++		cset "name='TX_AIF1_CAP Mixer DEC2' 1"
++		cset "name='TX_DEC2 Volume' 84"
++		cset "name='DMIC5_MIXER Switch' 1"
++		cset "name='DMIC4 Switch' 1"
+ 	]
+ 
+ 	DisableSequence [
+-		cset "name='TX SMIC MUX1' ZERO"
+-		cset "name='TX_AIF1_CAP Mixer DEC1' 0"
+-
+-		cset "name='ADC1_MIXER Switch' 0"
+-		cset "name='ADC1 Switch' 0"
+-		cset "name='TX1 MODE' ADC_INVALID"
++		cset "name='TX SMIC MUX2' ZERO"
++		cset "name='TX_AIF1_CAP Mixer DEC2' 0"
++		cset "name='DMIC5_MIXER Switch' 0"
++		cset "name='DMIC4 Switch' 0"
+ 	]
+ 
+ 	Value {
+ 		CaptureChannels 1
+ 		CapturePriority 200
+ 		CapturePCM "hw:${CardId},2"
+-		CaptureMixerElem "ADC1"
+ 	}
+ }
+ 
+@@ -119,33 +114,25 @@ SectionDevice."Mic4" {
+ 	Comment "Bottom Microphone"
+ 
+ 	EnableSequence [
+-		cset "name='TX DEC1 MUX' SWR_MIC"
+-		cset "name='TX SMIC MUX1' SWR_MIC4"
+-		cset "name='TX_AIF1_CAP Mixer DEC1' 1"
+-		cset "name='DEC1 MODE' ADC_DEFAULT"
+-		cset "name='TX_DEC1 Volume' 84"
+-
+-		cset "name='ADC3_MIXER Switch' 1"
+-		cset "name='HDR34 MUX' NO_HDR34"
+-		cset "name='ADC3 MUX' INP4"
+-		cset "name='ADC3 Switch' 1"
+-		cset "name='TX2 MODE' ADC_LP"
++		cset "name='TX DEC2 MUX' SWR_MIC"
++		cset "name='TX SMIC MUX2' SWR_MIC10"
++		cset "name='TX_AIF1_CAP Mixer DEC2' 1"
++		cset "name='TX_DEC2 Volume' 84"
++		cset "name='DMIC7_MIXER Switch' 1"
++		cset "name='DMIC6 Switch' 1"
+ 	]
+ 
+ 	DisableSequence [
+-		cset "name='TX SMIC MUX1' ZERO"
+-		cset "name='TX_AIF1_CAP Mixer DEC1' 0"
+-
+-		cset "name='ADC3_MIXER Switch' 0"
+-		cset "name='ADC3 Switch' 0"
+-		cset "name='TX2 MODE' ADC_INVALID"
++		cset "name='TX SMIC MUX2' ZERO"
++		cset "name='TX_AIF1_CAP Mixer DEC2' 0"
++		cset "name='DMIC7_MIXER Switch' 0"
++		cset "name='DMIC6 Switch' 0"
+ 	]
+ 
+ 	Value {
+ 		CaptureChannels 1
+ 		CapturePriority 100
+ 		CapturePCM "hw:${CardId},2"
+-		CaptureMixerElem "ADC3"
+ 	}
+ }
+ 
+@@ -153,31 +140,24 @@ SectionDevice."Mic5" {
+ 	Comment "Back Microphone"
+ 
+ 	EnableSequence [
+-		cset "name='TX DEC1 MUX' SWR_MIC"
+-		cset "name='TX SMIC MUX1' SWR_MIC5"
+-		cset "name='TX_AIF1_CAP Mixer DEC1' 1"
+-		cset "name='DEC1 MODE' ADC_DEFAULT"
+-		cset "name='TX_DEC1 Volume' 84"
+-
+-		cset "name='ADC4_MIXER Switch' 1"
+-		cset "name='ADC4 MUX' INP5"
+-		cset "name='ADC4 Switch' 1"
+-		cset "name='TX2 MODE' ADC_LP"
++		cset "name='TX DEC2 MUX' SWR_MIC"
++		cset "name='TX SMIC MUX2' SWR_MIC11"
++		cset "name='TX_AIF1_CAP Mixer DEC2' 1"
++		cset "name='TX_DEC2 Volume' 84"
++		cset "name='DMIC8_MIXER Switch' 1"
++		cset "name='DMIC7 Switch' 1"
+ 	]
+ 
+ 	DisableSequence [
+-		cset "name='TX SMIC MUX1' ZERO"
+-		cset "name='TX_AIF1_CAP Mixer DEC1' 0"
+-
+-		cset "name='ADC4_MIXER Switch' 0"
+-		cset "name='ADC4 Switch' 0"
+-		cset "name='TX2 MODE' ADC_INVALID"
++		cset "name='TX SMIC MUX2' ZERO"
++		cset "name='TX_AIF1_CAP Mixer DEC2' 0"
++		cset "name='DMIC8_MIXER Switch' 0"
++		cset "name='DMIC7 Switch' 0"
+ 	]
+ 
+ 	Value {
+ 		CaptureChannels 1
+ 		CapturePriority 50
+ 		CapturePCM "hw:${CardId},2"
+-		CaptureMixerElem "ADC4"
+ 	}
+ }
+-- 
+2.51.0.windows.2
+
