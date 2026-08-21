@@ -38,6 +38,8 @@ jobs:
 
       - name: Apply Linux patch series
         run: |
+          git -C linux config user.name "NH1 CI"
+          git -C linux config user.email "nh1-ci@example.invalid"
           git -C linux am "$GITHUB_WORKSPACE"/patches/linux/*.patch
           git -C linux diff --check origin/fekz115/spacewar-6.19..HEAD
 
@@ -88,6 +90,8 @@ jobs:
       - name: Clone and patch alsa-ucm-conf
         run: |
           git clone --depth=1 https://github.com/alsa-project/alsa-ucm-conf.git alsa-ucm-conf
+          git -C alsa-ucm-conf config user.name "NH1 CI"
+          git -C alsa-ucm-conf config user.email "nh1-ci@example.invalid"
           git -C alsa-ucm-conf am "$GITHUB_WORKSPACE"/patches/ucm/*.patch
           git -C alsa-ucm-conf diff --check HEAD^
 
