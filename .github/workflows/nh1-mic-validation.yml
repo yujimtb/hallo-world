@@ -28,7 +28,8 @@ jobs:
             bc bison build-essential flex gcc-aarch64-linux-gnu git \
             libelf-dev libssl-dev python3 python3-pip python3-venv rsync
           python3 -m venv "$RUNNER_TEMP/dtschema"
-          "$RUNNER_TEMP/dtschema/bin/pip" install --upgrade pip dtschema
+          "$RUNNER_TEMP/dtschema/bin/pip" install --upgrade pip
+          "$RUNNER_TEMP/dtschema/bin/pip" install dtschema==2025.12
           echo "$RUNNER_TEMP/dtschema/bin" >> "$GITHUB_PATH"
 
       - name: Clone Spacewar development kernel
@@ -66,6 +67,7 @@ jobs:
           ARCH: arm64
           CROSS_COMPILE: aarch64-linux-gnu-
         run: |
+          dt-doc-validate --version
           make CHECK_DTBS=y qcom/sm7325-nothing-spacewar.dtb
 
       - name: Upload patched DTB
