@@ -91,18 +91,13 @@ jobs:
       - name: Checkout validation inputs
         uses: actions/checkout@v4
 
-      - name: Add NP1 profile to current upstream tree
+      - name: Apply NP1 profile to current upstream tree
         run: |
           git clone --depth=1 https://github.com/alsa-project/alsa-ucm-conf.git alsa-ucm-conf
-          mkdir -p alsa-ucm-conf/ucm2/Qualcomm/sm8250/Nothing-Phone-1
-          cp ucm-profile/Qualcomm/sm8250/Nothing-Phone-1/*.conf \
-            alsa-ucm-conf/ucm2/Qualcomm/sm8250/Nothing-Phone-1/
-          ln -s ../../Qualcomm/sm8250/Nothing-Phone-1/NP1.conf \
-            alsa-ucm-conf/ucm2/conf.d/sm8250/NP1.conf
-          git -C alsa-ucm-conf add \
-            ucm2/Qualcomm/sm8250/Nothing-Phone-1 \
-            ucm2/conf.d/sm8250/NP1.conf
-          git -C alsa-ucm-conf diff --cached --check
+          git -C alsa-ucm-conf config user.name "NH1 CI"
+          git -C alsa-ucm-conf config user.email "nh1-ci@example.invalid"
+          git -C alsa-ucm-conf am "$GITHUB_WORKSPACE"/patches/ucm/*.patch
+          git -C alsa-ucm-conf diff --check HEAD^
 
       - name: Run the upstream UCM validator
         run: |
