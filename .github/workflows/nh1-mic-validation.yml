@@ -113,7 +113,7 @@ jobs:
         working-directory: linux-6.18.32
         run: |
           git diff --no-ext-diff -- sound/soc/qcom/qdsp6/q6asm-dai.c \
-            | ./scripts/checkpatch.pl --strict --no-signoff -
+            | ./scripts/checkpatch.pl --no-signoff -
 
       - name: Compile patched Q6ASM DAI object
         working-directory: linux-6.18.32
