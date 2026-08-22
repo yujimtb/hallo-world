@@ -79,6 +79,51 @@ jobs:
           path: linux/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dtb
           if-no-files-found: error
 
+  q6asm:
+    name: Q6ASM 6.18.32 stable backports
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout validation inputs
+        uses: actions/checkout@v4
+
+      - name: Install kernel build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential flex gcc-aarch64-linux-gnu git \
+            libelf-dev libssl-dev
+
+      - name: Clone Linux 6.18.32 stable tree
+        run: |
+          git clone --depth=1 --branch v6.18.32 \
+            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git \
+            linux-6.18.32
+
+      - name: Apply Q6ASM stable backports
+        run: |
+          git -C linux-6.18.32 config user.name "NH1 CI"
+          git -C linux-6.18.32 config user.email "nh1-ci@example.invalid"
+          git -C linux-6.18.32 am "$GITHUB_WORKSPACE"/patches/q6asm/*.patch
+          git -C linux-6.18.32 diff --check HEAD~3..HEAD
+
+      - name: Run Q6ASM checkpatch
+        working-directory: linux-6.18.32
+        run: |
+          for patch in "$GITHUB_WORKSPACE"/patches/q6asm/*.patch; do
+            ./scripts/checkpatch.pl --strict "$patch"
+          done
+
+      - name: Compile patched Q6ASM DAI object
+        working-directory: linux-6.18.32
+        env:
+          ARCH: arm64
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          make defconfig
+          make prepare
+          make -j"$(nproc)" sound/soc/qcom/qdsp6/q6asm-dai.o
+
   ucm:
     name: ALSA UCM validator2
     runs-on: ubuntu-latest
