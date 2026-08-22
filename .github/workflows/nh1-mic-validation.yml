@@ -91,7 +91,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            bc bison build-essential flex gcc-aarch64-linux-gnu git \
+            bc bison build-essential flex gcc-aarch64-linux-gnu git patch \
             libelf-dev libssl-dev
 
       - name: Clone Linux 6.18.32 stable tree
@@ -100,12 +100,14 @@ jobs:
             https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git \
             linux-6.18.32
 
-      - name: Apply Q6ASM stable backports
+      - name: Apply Q6ASM stable backports like the HIL sidecar builder
         run: |
-          git -C linux-6.18.32 config user.name "NH1 CI"
-          git -C linux-6.18.32 config user.email "nh1-ci@example.invalid"
-          git -C linux-6.18.32 am "$GITHUB_WORKSPACE"/patches/q6asm/*.patch
-          git -C linux-6.18.32 diff --check HEAD~3..HEAD
+          for patchfile in "$GITHUB_WORKSPACE"/patches/q6asm/*.patch; do
+            patch --batch --forward --fuzz=2 -d linux-6.18.32 -p1 < "$patchfile"
+          done
+          test -z "$(find linux-6.18.32 -name '*.rej' -print -quit)"
+          git -C linux-6.18.32 diff --check
+          git -C linux-6.18.32 diff --stat
 
       - name: Run Q6ASM checkpatch
         working-directory: linux-6.18.32
