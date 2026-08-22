@@ -1,4 +1,4 @@
-From 418655a95bd777a53019f488cf68ed1feba74133 Mon Sep 17 00:00:00 2001
+From 5e4ba2b7f6ea720d99d23187e9b1692d13f5aa60 Mon Sep 17 00:00:00 2001
 From: yuji mitobe <mitobex7@gmail.com>
 Date: Sat, 22 Aug 2026 04:40:00 +0900
 Subject: [PATCH] ucm2: Qualcomm: sm8250: add Nothing Phone (1) profile
@@ -26,7 +26,7 @@ Signed-off-by: yuji mitobe <mitobex7@gmail.com>
 
 diff --git a/ucm2/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf b/ucm2/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf
 new file mode 100644
-index 0000000..5744139
+index 0000000..3b2be4f
 --- /dev/null
 +++ b/ucm2/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf
 @@ -0,0 +1,161 @@
