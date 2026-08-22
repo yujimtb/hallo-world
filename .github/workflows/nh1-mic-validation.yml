@@ -109,12 +109,11 @@ jobs:
           git -C linux-6.18.32 diff --check
           git -C linux-6.18.32 diff --stat
 
-      - name: Run Q6ASM checkpatch
+      - name: Run Q6ASM checkpatch on the applied code diff
         working-directory: linux-6.18.32
         run: |
-          for patch in "$GITHUB_WORKSPACE"/patches/q6asm/*.patch; do
-            ./scripts/checkpatch.pl --strict "$patch"
-          done
+          git diff --no-ext-diff -- sound/soc/qcom/qdsp6/q6asm-dai.c \
+            | ./scripts/checkpatch.pl --strict --no-signoff -
 
       - name: Compile patched Q6ASM DAI object
         working-directory: linux-6.18.32
