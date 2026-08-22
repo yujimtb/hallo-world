@@ -25,8 +25,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            bc bison build-essential flex gcc-aarch64-linux-gnu git \
-            libelf-dev libssl-dev python3 rsync
+            bc bison build-essential device-tree-compiler flex \
+            gcc-aarch64-linux-gnu git libelf-dev libssl-dev python3 rsync
 
       - name: Clone and patch Spacewar kernel
         run: |
@@ -54,17 +54,17 @@ jobs:
             -i linux/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dtb \
             -o live-overlay/merged-spacewar.dtb \
             live-overlay/nh1-mic-overlay.dtbo
-          test "$(linux/scripts/dtc/fdtget -t s \
+          test "$(fdtget -t s \
             live-overlay/merged-spacewar.dtb \
             /soc@0/soundwire@3210000/haptics@0,0 compatible)" \
             = "sdw20217f00100"
-          linux/scripts/dtc/fdtget -t s \
+          fdtget -t s \
             live-overlay/merged-spacewar.dtb /sound audio-routing \
             | grep -q 'TX SWR_INPUT8.*DMIC5_OUTPUT'
-          linux/scripts/dtc/fdtget -t s \
+          fdtget -t s \
             live-overlay/merged-spacewar.dtb /sound audio-routing \
             | grep -q 'TX SWR_INPUT10.*DMIC7_OUTPUT'
-          linux/scripts/dtc/fdtget -t s \
+          fdtget -t s \
             live-overlay/merged-spacewar.dtb /sound audio-routing \
             | grep -q 'TX SWR_INPUT11.*DMIC8_OUTPUT'
 
