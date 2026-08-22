@@ -1,26 +1,30 @@
-From 3b2c1e2eef6810fb5ec2e2d15b6f36b26aacde5c Mon Sep 17 00:00:00 2001
+From 650db390c2867f4533bf6289dec4eb29fe152617 Mon Sep 17 00:00:00 2001
 From: yuji mitobe <mitobex7@gmail.com>
 Date: Sat, 22 Aug 2026 03:51:54 +0900
 Subject: [PATCH 3/3] arm64: dts: qcom: sm7325-nothing-spacewar: route built-in
  digital microphones
 
-Nothing Phone (1) uses WCD9385 SoundWire digital microphone channels
-for its built-in microphones. The vendor mixer configuration routes
-the single-microphone paths through SWR_MIC8, SWR_MIC10 and SWR_MIC11.
+Nothing Phone (1) uses WCD9385 SoundWire digital microphone channels for
+its built-in microphones. The vendor mixer configuration routes the
+single-microphone paths through SWR_MIC8, SWR_MIC10 and SWR_MIC11.
 These correspond to SoundWire TX3 channels 1, 3 and 4.
 
-WCD9385 maps those channels to DMIC4, DMIC6 and DMIC7. The upstream
-codec exposes them as DMIC5_OUTPUT, DMIC7_OUTPUT and DMIC8_OUTPUT.
-Connect those outputs to LPASS TX SWR inputs 8, 10 and 11 so the TX
-macro DAPM routes can power the built-in microphone paths.
+WCD9385 maps those channels to DMIC4, DMIC6 and DMIC7. The upstream codec
+exposes them as DMIC5_OUTPUT, DMIC7_OUTPUT and DMIC8_OUTPUT. Connect those
+outputs to LPASS TX SWR inputs 8, 10 and 11 so the TX macro DAPM routes can
+power the built-in microphone paths.
+
+SC7280 exposes three TX SoundWire master ports. Map the four WCD9385 slave
+ports as <1 1 2 3>, matching other three-port Qualcomm designs, rather than
+routing slave port 4 to nonexistent master port 4.
 
 Signed-off-by: yuji mitobe <mitobex7@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts b/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts
-index e11bd47a18b0..bb2fcd664ab3 100644
+index e11bd47a18b0..b595c5a12313 100644
 --- a/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts
 +++ b/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dts
 @@ -1480,7 +1480,10 @@ &sound {
@@ -35,6 +39,14 @@ index e11bd47a18b0..bb2fcd664ab3 100644
  
  	mm1-dai-link {
  		link-name = "MultiMedia1";
+@@ -1616,7 +1619,7 @@ wcd_tx: codec@0,3 {
+ 		compatible = "sdw20217010d00";
+ 		reg = <0 3>;
+ 
+-		qcom,tx-port-mapping = <1 2 3 4>;
++		qcom,tx-port-mapping = <1 1 2 3>;
+ 	};
+ };
+ 
 -- 
 2.51.0.windows.2
-
