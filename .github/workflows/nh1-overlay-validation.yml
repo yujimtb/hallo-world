@@ -36,13 +36,14 @@ jobs:
           git -C linux config user.email "nh1-ci@example.invalid"
           git -C linux am "$GITHUB_WORKSPACE"/patches/linux/*.patch
 
-      - name: Build final Spacewar DTB
+      - name: Build final Spacewar DTB and prepare module tree
         working-directory: linux
         env:
           ARCH: arm64
           CROSS_COMPILE: aarch64-linux-gnu-
         run: |
           make defconfig
+          make -j"$(nproc)" modules_prepare
           make -j"$(nproc)" qcom/sm7325-nothing-spacewar.dtb
 
       - name: Compile and apply live overlay
