@@ -80,7 +80,7 @@ index 0000000..5744139
 +}
 +
 +SectionDevice."Mic1" {
-+	Comment "Top Microphone"
++	Comment "Bottom Microphone"
 +
 +	# WCD9385 DMIC4 is routed to TX SWR_INPUT8.
 +	EnableSequence [
@@ -139,7 +139,7 @@ index 0000000..5744139
 +}
 +
 +SectionDevice."Mic4" {
-+	Comment "Bottom Microphone"
++	Comment "Back Microphone"
 +
 +	# WCD9385 DMIC6 is routed to TX SWR_INPUT10.
 +	EnableSequence [
@@ -166,7 +166,7 @@ index 0000000..5744139
 +}
 +
 +SectionDevice."Mic5" {
-+	Comment "Back Microphone"
++	Comment "Top Microphone"
 +
 +	# WCD9385 DMIC7 is routed to TX SWR_INPUT11.
 +	EnableSequence [
