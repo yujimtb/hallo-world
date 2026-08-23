@@ -1,0 +1,100 @@
+From 9531afe2d8c8f49923f459d4426df33ef0cc611b Mon Sep 17 00:00:00 2001
+From: yuji mitobe <mitobex7@gmail.com>
+Date: Sun, 23 Aug 2026 09:03:21 +0900
+Subject: [PATCH 4/6] ASoC: qcom: q6asm: handle full READ_DONE_V2 payload for
+ capture
+
+The ASM_DATA_EVENT_READ_DONE_V2 response carries an 11-word payload:
+completion status, buffer address, memory map handle, produced byte
+count, offset, timestamp, flags, frame count and sequence id. Only the
+leading status and address words are described today, so the driver
+cannot tell a buffer filled with real PCM data apart from a zero-byte
+completion returned for queued reads flushed at close/flush time.
+
+Both cases currently advance hw_ptr before validation and invoke the
+client callback, which produces spurious ALSA periods with stale data
+and queues new reads after the stream started closing.
+
+Describe the full payload, validate the token before indexing the port
+buffers and skip non-data completions (error status or zero bytes)
+without advancing hw_ptr or requeueing reads. Firmware sending only the
+short address-only payload keeps the existing behaviour.
+
+Signed-off-by: yuji mitobe <mitobex7@gmail.com>
+---
+ sound/soc/qcom/qdsp6/q6asm.c | 44 +++++++++++++++++++++++++++++++++---
+ 1 file changed, 41 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/qcom/qdsp6/q6asm.c b/sound/soc/qcom/qdsp6/q6asm.c
+index e7295b7b24610..7c96f8d83b38e 100644
+--- a/sound/soc/qcom/qdsp6/q6asm.c
++++ b/sound/soc/qcom/qdsp6/q6asm.c
+@@ -203,7 +203,15 @@ struct asm_data_cmd_read_v2_done {
+ 	u32	status;
+ 	u32	buf_addr_lsw;
+ 	u32	buf_addr_msw;
+-};
++	u32	mem_map_handle;
++	u32	enc_frames_total_size;
++	u32	offset;
++	u32	timestamp_lsw;
++	u32	timestamp_msw;
++	u32	flags;
++	u32	num_frames;
++	u32	seq_id;
++} __packed;
+ 
+ struct asm_stream_cmd_open_read_v3 {
+ 	u32                    mode_flags;
+@@ -715,9 +723,14 @@ static int32_t q6asm_stream_callback(struct apr_device *adev,
+ 				goto done;
+ 			}
+ 
+-			phys = port->buf[hdr->token].phys;
+-			atomic_set(&port->hw_ptr, hdr->token + 1);
++			if (hdr->token >= port->num_periods) {
++				dev_err(ac->dev, "READ_DONE token %u out of range %u\n",
++					hdr->token, port->num_periods);
++				ret = -EINVAL;
++				goto done;
++			}
+ 
++			phys = port->buf[hdr->token].phys;
+ 			if (upper_32_bits(phys) != done->buf_addr_msw ||
+ 			    lower_32_bits(phys) != done->buf_addr_lsw) {
+ 				dev_err(ac->dev, "Expected addr %pa %08x-%08x\n",
+@@ -727,6 +740,31 @@ static int32_t q6asm_stream_callback(struct apr_device *adev,
+ 				ret = -EINVAL;
+ 				goto done;
+ 			}
++
++			/*
++			 * The full READ_DONE_V2 payload reports a completion
++			 * status and the number of bytes produced. A zero-byte
++			 * completion is returned for queued reads flushed at
++			 * close/flush time and is not an ALSA period. Firmware
++			 * sending the short address-only payload keeps the
++			 * previous behaviour.
++			 */
++			if (data->payload_size >= sizeof(*done)) {
++				dev_dbg(ac->dev,
++					"READ_DONE token=%u status=%u bytes=%u offset=%u frames=%u seq=%u\n",
++					hdr->token, done->status,
++					done->enc_frames_total_size, done->offset,
++					done->num_frames, done->seq_id);
++				if (done->status || !done->enc_frames_total_size) {
++					dev_dbg(ac->dev,
++						"ignoring non-data READ_DONE token=%u status=%u bytes=%u\n",
++						hdr->token, done->status,
++						done->enc_frames_total_size);
++					goto done;
++				}
++			}
++
++			atomic_set(&port->hw_ptr, hdr->token + 1);
+ 		}
+ 
+ 		break;
+-- 
+2.51.0.windows.2
+

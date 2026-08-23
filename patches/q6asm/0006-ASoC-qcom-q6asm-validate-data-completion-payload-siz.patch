@@ -1,0 +1,70 @@
+From a75e5e092e1a28fc7c4b7a7330e161279e565db2 Mon Sep 17 00:00:00 2001
+From: yuji mitobe <mitobex7@gmail.com>
+Date: Sun, 23 Aug 2026 12:27:54 +0900
+Subject: [PATCH 6/6] ASoC: qcom: q6asm: validate data completion payload sizes
+
+The Q6ASM stream callback dereferences DSP completion payloads before
+checking that APR delivered enough bytes for the corresponding response.
+A truncated WRITE_DONE or READ_DONE packet can therefore make the driver
+read beyond the received payload while handling an asynchronous DSP event.
+
+Validate WRITE_DONE before reading the response structure. For READ_DONE,
+accept the legacy three-word response used by older firmware as well as the
+full READ_DONE_V2 payload, but reject every other undersized response before
+using its fields.
+
+Signed-off-by: yuji mitobe <mitobex7@gmail.com>
+---
+ sound/soc/qcom/qdsp6/q6asm.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/sound/soc/qcom/qdsp6/q6asm.c b/sound/soc/qcom/qdsp6/q6asm.c
+index 5199381f48052..ca7054ef0b218 100644
+--- a/sound/soc/qcom/qdsp6/q6asm.c
++++ b/sound/soc/qcom/qdsp6/q6asm.c
+@@ -213,6 +213,12 @@ struct asm_data_cmd_read_v2_done {
+ 	u32	seq_id;
+ } __packed;
+ 
++struct asm_data_cmd_read_v2_done_legacy {
++	u32	status;
++	u32	buf_addr_lsw;
++	u32	buf_addr_msw;
++} __packed;
++
+ struct asm_stream_cmd_open_read_v3 {
+ 	u32                    mode_flags;
+ 	u32                    src_endpointype;
+@@ -689,6 +695,13 @@ static int32_t q6asm_stream_callback(struct apr_device *adev,
+ 			phys_addr_t phys;
+ 			int token = hdr->token & ASM_WRITE_TOKEN_MASK;
+ 
++			if (data->payload_size < sizeof(*result)) {
++				dev_err(ac->dev, "short WRITE_DONE payload: %u\n",
++					data->payload_size);
++				ret = -EINVAL;
++				goto done;
++			}
++
+ 			guard(spinlock_irqsave)(&ac->lock);
+ 
+ 			port =  &ac->port[SNDRV_PCM_STREAM_PLAYBACK];
+@@ -724,6 +737,15 @@ static int32_t q6asm_stream_callback(struct apr_device *adev,
+ 			struct asm_data_cmd_read_v2_done *done = data->payload;
+ 			phys_addr_t phys;
+ 
++			if (data->payload_size !=
++			    sizeof(struct asm_data_cmd_read_v2_done_legacy) &&
++			    data->payload_size < sizeof(*done)) {
++				dev_err(ac->dev, "invalid READ_DONE payload size: %u\n",
++					data->payload_size);
++				ret = -EINVAL;
++				goto done;
++			}
++
+ 			guard(spinlock_irqsave)(&ac->lock);
+ 			port =  &ac->port[SNDRV_PCM_STREAM_CAPTURE];
+ 			if (!port->buf) {
+-- 
+2.51.0.windows.2
+

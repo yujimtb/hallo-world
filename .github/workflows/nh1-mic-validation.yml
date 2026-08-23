@@ -80,17 +80,17 @@ jobs:
           if-no-files-found: error
 
   q6asm:
-    name: Q6ASM 6.18.32 stable backports
+    name: Q6ASM 6.18.32 capture backports
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Checkout validation inputs
-        uses: actions/checkout@v4
+        uses: actions/checkout4
 
       - name: Install kernel build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install-y \
             bc bison build-essential flex gcc-aarch64-linux-gnu git patch \
             libelf-dev libssl-dev
 
@@ -112,7 +112,7 @@ jobs:
       - name: Run Q6ASM checkpatch on the applied code diff
         working-directory: linux-6.18.32
         run: |
-          git diff --no-ext-diff -- sound/soc/qcom/qdsp6/q6asm-dai.c \
+          git diff --no-ext-diff -- sound/soc/qcom/qdsp6/q6asm.c sound/soc/qcom/qdsp6/q6asm-dai.c \
             | ./scripts/checkpatch.pl --no-signoff -
 
       - name: Compile patched Q6ASM DAI object
@@ -123,7 +123,7 @@ jobs:
         run: |
           make defconfig
           make prepare
-          make -j"$(nproc)" sound/soc/qcom/qdsp6/q6asm-dai.o
+          make -j"$(nproc)" sound/soc/qcom/qdsp6/q6asm.o sound/soc/qcom/qdsp6/q6asm-dai.o
 
   ucm:
     name: ALSA UCM validator2

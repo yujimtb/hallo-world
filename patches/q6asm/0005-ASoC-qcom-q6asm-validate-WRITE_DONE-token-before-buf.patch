@@ -1,0 +1,41 @@
+From 0d5267279a7ad21b9deeb5d2a8123396077cba82 Mon Sep 17 00:00:00 2001
+From: yuji mitobe <mitobex7@gmail.com>
+Date: Sun, 23 Aug 2026 09:03:42 +0900
+Subject: [PATCH 5/6] ASoC: qcom: q6asm: validate WRITE_DONE token before
+ buffer access
+
+The DSP echoes the token of the completed write command in the APR
+header. The token is masked down to its 16-bit index field but never
+checked against the number of mapped periods, so a bogus or corrupted
+response indexes outside the port buffer array.
+
+Mirror the READ_DONE validation and reject out-of-range tokens instead
+of dereferencing an invalid buffer.
+
+Signed-off-by: yuji mitobe <mitobex7@gmail.com>
+---
+ sound/soc/qcom/qdsp6/q6asm.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/sound/soc/qcom/qdsp6/q6asm.c b/sound/soc/qcom/qdsp6/q6asm.c
+index 7c96f8d83b38e..5199381f48052 100644
+--- a/sound/soc/qcom/qdsp6/q6asm.c
++++ b/sound/soc/qcom/qdsp6/q6asm.c
+@@ -698,6 +698,14 @@ static int32_t q6asm_stream_callback(struct apr_device *adev,
+ 				goto done;
+ 			}
+ 
++			if (token >= port->num_periods) {
++				dev_err(ac->dev,
++					"WRITE_DONE token %u out of range %u\n",
++					token, port->num_periods);
++				ret = -EINVAL;
++				goto done;
++			}
++
+ 			phys = port->buf[token].phys;
+ 
+ 			if (lower_32_bits(phys) != result->opcode ||
+-- 
+2.51.0.windows.2
+
