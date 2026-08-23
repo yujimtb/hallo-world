@@ -1,4 +1,5 @@
 name: Validate NH1 microphone patches
+# Inputs: analog NP1 UCM (ADC1/ADC3/ADC4; headset ADC2); no built-in digital overlay.
 
 on:
   push:
@@ -85,12 +86,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout validation inputs
-        uses: actions/checkout4
+        uses: actions/checkout@v4
 
       - name: Install kernel build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install-y \
+          sudo apt-get install -y \
             bc bison build-essential flex gcc-aarch64-linux-gnu git patch \
             libelf-dev libssl-dev
 
