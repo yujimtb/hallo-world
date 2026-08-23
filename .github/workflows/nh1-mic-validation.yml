@@ -1,0 +1,154 @@
+name: Validate NH1 microphone patches
+# Inputs: analog NP1 UCM (ADC1/ADC3/ADC4; headset ADC2); no built-in digital overlay.
+
+on:
+  push:
+    branches:
+      - nh1-mic-ci-20260822
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux DTB and patch checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout validation inputs
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential flex gcc-aarch64-linux-gnu git \
+            libelf-dev libssl-dev python3 python3-pip python3-libfdt rsync
+          python3 -m pip install --user --break-system-packages \
+            'jsonschema>=4.18' 'ruamel.yaml>0.15.69' rfc3987
+          python3 -m pip install --user --break-system-packages --no-deps \
+            dtschema==2025.12
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Clone Spacewar development kernel
+        run: |
+          git clone --depth=1 --branch fekz115/spacewar-6.19 \
+            https://github.com/mainlining/linux.git linux
+
+      - name: Apply Linux patch series
+        run: |
+          git -C linux config user.name "NH1 CI"
+          git -C linux config user.email "nh1-ci@example.invalid"
+          git -C linux am "$GITHUB_WORKSPACE"/patches/linux/*.patch
+          git -C linux diff --check origin/fekz115/spacewar-6.19..HEAD
+
+      - name: Run checkpatch
+        working-directory: linux
+        run: |
+          for patch in "$GITHUB_WORKSPACE"/patches/linux/*.patch; do
+            ./scripts/checkpatch.pl --strict \
+              --ignore=UNDOCUMENTED_DT_STRING "$patch"
+          done
+
+      - name: Build Spacewar DTB
+        working-directory: linux
+        env:
+          ARCH: arm64
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          make defconfig
+          make -j"$(nproc)" qcom/sm7325-nothing-spacewar.dtb
+
+      - name: Validate Spacewar DTB schemas
+        working-directory: linux
+        env:
+          ARCH: arm64
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          python3 -c 'import libfdt; print(libfdt.__file__)'
+          dt-doc-validate --version
+          make CHECK_DTBS=y qcom/sm7325-nothing-spacewar.dtb
+
+      - name: Upload patched DTB
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm7325-nothing-spacewar-microphone-dtb
+          path: linux/arch/arm64/boot/dts/qcom/sm7325-nothing-spacewar.dtb
+          if-no-files-found: error
+
+  q6asm:
+    name: Q6ASM 6.18.32 capture backports
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout validation inputs
+        uses: actions/checkout@v4
+
+      - name: Install kernel build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential flex gcc-aarch64-linux-gnu git patch \
+            libelf-dev libssl-dev
+
+      - name: Clone Linux 6.18.32 stable tree
+        run: |
+          git clone --depth=1 --branch v6.18.32 \
+            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git \
+            linux-6.18.32
+
+      - name: Apply Q6ASM stable backports like the HIL sidecar builder
+        run: |
+          for patchfile in "$GITHUB_WORKSPACE"/patches/q6asm/*.patch; do
+            patch --batch --forward --fuzz=2 -d linux-6.18.32 -p1 < "$patchfile"
+          done
+          test -z "$(find linux-6.18.32 -name '*.rej' -print -quit)"
+          git -C linux-6.18.32 diff --check
+          git -C linux-6.18.32 diff --stat
+
+      - name: Run Q6ASM checkpatch on the applied code diff
+        working-directory: linux-6.18.32
+        run: |
+          git diff --no-ext-diff -- sound/soc/qcom/qdsp6/q6asm.c sound/soc/qcom/qdsp6/q6asm-dai.c \
+            | ./scripts/checkpatch.pl --no-signoff -
+
+      - name: Compile patched Q6ASM DAI object
+        working-directory: linux-6.18.32
+        env:
+          ARCH: arm64
+          CROSS_COMPILE: aarch64-linux-gnu-
+        run: |
+          make defconfig
+          make prepare
+          make -j"$(nproc)" sound/soc/qcom/qdsp6/q6asm.o sound/soc/qcom/qdsp6/q6asm-dai.o
+
+  ucm:
+    name: ALSA UCM validator2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: fedora:latest
+    steps:
+      - name: Install validator dependencies
+        run: dnf -y install alsa-lib-devel git make python3
+
+      - name: Checkout validation inputs
+        uses: actions/checkout@v4
+
+      - name: Apply NP1 profile to current upstream tree
+        run: |
+          git clone --depth=1 https://github.com/alsa-project/alsa-ucm-conf.git alsa-ucm-conf
+          git -C alsa-ucm-conf config user.name "NH1 CI"
+          git -C alsa-ucm-conf config user.email "nh1-ci@example.invalid"
+          git -C alsa-ucm-conf am "$GITHUB_WORKSPACE"/patches/ucm/*.patch
+          git -C alsa-ucm-conf diff --check HEAD^
+
+      - name: Run the upstream UCM validator
+        run: |
+          git clone --depth=1 https://github.com/alsa-project/alsa-tests.git alsa-tests
+          cd alsa-tests/python/ucm-validator2
+          make configs

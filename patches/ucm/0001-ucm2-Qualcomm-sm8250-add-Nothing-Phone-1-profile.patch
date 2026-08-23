@@ -1,0 +1,250 @@
+From f6409b9b7318825e0ffc4c2dc00998cbcc4f6626 Mon Sep 17 00:00:00 2001
+From: yuji mitobe <mitobex7@gmail.com>
+Date: Sat, 22 Aug 2026 04:40:00 +0900
+Subject: [PATCH] ucm2: Qualcomm: sm8250: add Nothing Phone (1) profile
+
+Add a UCM profile for the Nothing Phone (1), codename Spacewar, whose
+ASoC card is named NP1.
+
+The device uses the SM8250-family LPASS routing with a WCD9385 codec.
+Route the three built-in microphone inputs through ADC1, ADC3 and ADC4,
+and keep the analog headset microphone on ADC2. Do not assign physical
+aperture names until those positions have been verified acoustically.
+
+Expose the external speaker path, headphones and microphone paths, and
+initialize the WCD9385 and LPASS RX macro controls.
+
+Signed-off-by: yuji mitobe <mitobex7@gmail.com>
+---
+ .../Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf | 183 ++++++++++++++++++
+ ucm2/Qualcomm/sm8250/Nothing-Phone-1/NP1.conf |  19 ++
+ ucm2/conf.d/sm8250/NP1.conf                   |   1 +
+ 3 files changed, 203 insertions(+)
+ create mode 100644 ucm2/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf
+ create mode 100644 ucm2/Qualcomm/sm8250/Nothing-Phone-1/NP1.conf
+ create mode 120000 ucm2/conf.d/sm8250/NP1.conf
+
+diff --git a/ucm2/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf b/ucm2/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf
+new file mode 100644
+index 0000000..2c0722d
+--- /dev/null
++++ b/ucm2/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf
+@@ -0,0 +1,183 @@
++# Use case configuration for Nothing Phone (1)
++
++SectionVerb {
++	EnableSequence [
++		cset "name='PRI_MI2S_RX Audio Mixer MultiMedia1' 1"
++		cset "name='RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia2' 1"
++		cset "name='MultiMedia3 Mixer TX_CODEC_DMA_TX_3' 1"
++	]
++
++	DisableSequence [
++		cset "name='PRI_MI2S_RX Audio Mixer MultiMedia1' 0"
++		cset "name='RX_CODEC_DMA_RX_0 Audio Mixer MultiMedia2' 0"
++		cset "name='MultiMedia3 Mixer TX_CODEC_DMA_TX_3' 0"
++	]
++
++	Value {
++		TQ "HiFi"
++	}
++}
++
++SectionDevice."Speaker" {
++	Comment "Speaker & Earpiece Playback"
++
++	Value {
++		PlaybackChannels 2
++		PlaybackPriority 100
++		PlaybackPCM "hw:${CardId},0"
++		PlaybackMixer "default:${CardId}"
++	}
++}
++
++SectionDevice."Headphones" {
++	Comment "Headphones Playback"
++
++	Include.wcdhpe.File "/codecs/wcd938x/HeadphoneEnableSeq.conf"
++	Include.wcdhpd.File "/codecs/wcd938x/HeadphoneDisableSeq.conf"
++	Include.rxmhpe.File "/codecs/qcom-lpass/rx-macro/HeadphoneEnableSeq.conf"
++	Include.rxmhpd.File "/codecs/qcom-lpass/rx-macro/HeadphoneDisableSeq.conf"
++
++	Value {
++		PlaybackPriority 200
++		PlaybackPCM "hw:${CardId},1"
++		PlaybackMixer "default:${CardId}"
++		PlaybackMixerElem "HP Digital"
++		JackControl "Headphone Jack"
++		JackHWMute "Speaker"
++	}
++}
++
++SectionDevice."Mic1" {
++	Comment "Built-in Microphone 1"
++
++	# SC7280/SM7325 WCD9385 AMIC1 route: ADC1 -> TX decimator 0.
++	EnableSequence [
++		cset "name='TX DEC0 MUX' SWR_MIC"
++		cset "name='TX SMIC MUX0' SWR_MIC0"
++		cset "name='TX_AIF1_CAP Mixer DEC0' 1"
++		cset "name='TX_DEC0 Volume' 100"
++
++		cset "name='ADC1_MIXER Switch' 1"
++		cset "name='ADC1 Switch' 1"
++		cset "name='TX0 MODE' ADC_NORMAL"
++	]
++
++	DisableSequence [
++		cset "name='TX SMIC MUX0' ZERO"
++		cset "name='TX_AIF1_CAP Mixer DEC0' 0"
++
++		cset "name='ADC1_MIXER Switch' 0"
++		cset "name='ADC1 Switch' 0"
++		cset "name='TX0 MODE' ADC_INVALID"
++	]
++
++	Value {
++		CaptureChannels 1
++		CapturePriority 200
++		CapturePCM "hw:${CardId},2"
++		CaptureMixerElem "ADC1"
++	}
++}
++
++SectionDevice."Mic2" {
++	Comment "Headset Microphone"
++
++	EnableSequence [
++		cset "name='TX DEC0 MUX' SWR_MIC"
++		cset "name='TX SMIC MUX0' SWR_MIC1"
++		cset "name='TX_AIF2_CAP Mixer DEC0' 1"
++		cset "name='DEC0 MODE' ADC_DEFAULT"
++		cset "name='TX_DEC0 Volume' 84"
++
++		cset "name='ADC2_MIXER Switch' 1"
++		cset "name='HDR12 MUX' NO_HDR12"
++		cset "name='ADC2 MUX' INP2"
++		cset "name='ADC2 Switch' 1"
++		cset "name='TX1 MODE' ADC_LP"
++	]
++
++	DisableSequence [
++		cset "name='TX SMIC MUX0' ZERO"
++		cset "name='TX_AIF2_CAP Mixer DEC0' 0"
++
++		cset "name='ADC2_MIXER Switch' 0"
++		cset "name='ADC2 Switch' 0"
++		cset "name='TX1 MODE' ADC_INVALID"
++	]
++
++	Value {
++		CaptureChannels 1
++		CapturePriority 150
++		CapturePCM "hw:${CardId},2"
++		CaptureMixerElem "ADC2"
++	}
++}
++
++SectionDevice."Mic4" {
++	Comment "Built-in Microphone 2"
++
++	# WCD9385 AMIC4 route: ADC3 (INP4) -> TX decimator 0.
++	EnableSequence [
++		cset "name='TX DEC0 MUX' SWR_MIC"
++		cset "name='TX SMIC MUX0' SWR_MIC4"
++		cset "name='TX_AIF1_CAP Mixer DEC0' 1"
++		cset "name='DEC0 MODE' ADC_DEFAULT"
++		cset "name='TX_DEC0 Volume' 84"
++
++		cset "name='ADC3_MIXER Switch' 1"
++		cset "name='HDR34 MUX' NO_HDR34"
++		cset "name='ADC3 MUX' INP4"
++		cset "name='ADC3 Switch' 1"
++		cset "name='ADC3 Volume' 12"
++		cset "name='TX2 MODE' ADC_NORMAL"
++	]
++
++	DisableSequence [
++		cset "name='TX SMIC MUX0' ZERO"
++		cset "name='TX_AIF1_CAP Mixer DEC0' 0"
++
++		cset "name='ADC3_MIXER Switch' 0"
++		cset "name='ADC3 Switch' 0"
++		cset "name='TX2 MODE' ADC_INVALID"
++	]
++
++	Value {
++		CaptureChannels 1
++		CapturePriority 100
++		CapturePCM "hw:${CardId},2"
++	}
++}
++
++SectionDevice."Mic5" {
++	Comment "Built-in Microphone 3"
++
++	# WCD9385 AMIC5 route: ADC4 (INP5) -> TX decimator 0.
++	EnableSequence [
++		cset "name='TX DEC0 MUX' SWR_MIC"
++		cset "name='TX SMIC MUX0' SWR_MIC5"
++		cset "name='TX_AIF1_CAP Mixer DEC0' 1"
++		cset "name='DEC0 MODE' ADC_DEFAULT"
++		cset "name='TX_DEC0 Volume' 84"
++
++		cset "name='ADC4_MIXER Switch' 1"
++		cset "name='ADC4 MUX' INP5"
++		cset "name='ADC4 Switch' 1"
++		cset "name='TX3 MODE' ADC_NORMAL"
++	]
++
++	DisableSequence [
++		cset "name='TX SMIC MUX0' ZERO"
++		cset "name='TX_AIF1_CAP Mixer DEC0' 0"
++
++		cset "name='ADC4_MIXER Switch' 0"
++		cset "name='ADC4 Switch' 0"
++		cset "name='TX3 MODE' ADC_INVALID"
++	]
++
++	Value {
++		CaptureChannels 1
++		CapturePriority 50
++		CapturePCM "hw:${CardId},2"
++		CaptureMixerElem "ADC4"
++	}
++}
+diff --git a/ucm2/Qualcomm/sm8250/Nothing-Phone-1/NP1.conf b/ucm2/Qualcomm/sm8250/Nothing-Phone-1/NP1.conf
+new file mode 100644
+index 0000000..3c1d43b
+--- /dev/null
++++ b/ucm2/Qualcomm/sm8250/Nothing-Phone-1/NP1.conf
+@@ -0,0 +1,19 @@
++# Use case configuration for Nothing Phone (1)
++
++Syntax 4
++
++SectionUseCase."HiFi" {
++	File "/Qualcomm/sm8250/Nothing-Phone-1/HiFi.conf"
++	Comment "HiFi quality Music."
++}
++
++BootSequence [
++	cset "name='HPHL Volume' 20"
++	cset "name='HPHR Volume' 20"
++	cset "name='ADC2 Volume' 12"
++]
++
++Include.card-init.File "/lib/card-init.conf"
++Include.ctl-remap.File "/lib/ctl-remap.conf"
++Include.wcd-init.File "/codecs/wcd938x/init.conf"
++Include.rxm-init.File "/codecs/qcom-lpass/rx-macro/init.conf"
+diff --git a/ucm2/conf.d/sm8250/NP1.conf b/ucm2/conf.d/sm8250/NP1.conf
+new file mode 120000
+index 0000000..89e1f82
+--- /dev/null
++++ b/ucm2/conf.d/sm8250/NP1.conf
+@@ -0,0 +1 @@
++../../Qualcomm/sm8250/Nothing-Phone-1/NP1.conf
+\ No newline at end of file
+-- 
+2.51.0.windows.2
